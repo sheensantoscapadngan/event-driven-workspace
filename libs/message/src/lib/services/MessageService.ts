@@ -1,4 +1,5 @@
 import { PubSub } from '@google-cloud/pubsub';
+import { Message } from '@google-cloud/pubsub/build/src/subscriber';
 import { SystemEvent } from '../types';
 
 export class MessageService {
@@ -14,10 +15,11 @@ export class MessageService {
   ) {
     this.pubSubClient
       .subscription(subscriptionName)
-      .on('message', async (message) => {
+      .on('message', async (message: Message) => {
         const data = JSON.parse(message.data.toString()) as T;
         await eventHandler(data);
-        message.ack();
+        await message.ackWithResponse();
+        console.info(`Message with ID ${message.id} acknowledged.`);
       })
       .on('error', (err) => console.error(err));
   }
