@@ -1,5 +1,9 @@
 import { ILogisticDelivery } from '@event-driven-workspace/logistic';
-import { LogisticEvent, MessageService } from '@event-driven-workspace/message';
+import {
+  IAcknowledgeMessage,
+  LogisticEvent,
+  MessageService,
+} from '@event-driven-workspace/message';
 
 export class LogisticService {
   private messageService: MessageService;
@@ -10,12 +14,17 @@ export class LogisticService {
     this.databaseService = databaseService;
   }
 
-  public process(delivery: ILogisticDelivery) {
+  public async process(
+    delivery: ILogisticDelivery,
+    acknowledgeMessage: IAcknowledgeMessage
+  ) {
     console.log(
       `Orchestrating delivery of ${delivery.item} to ${delivery.receiverAddress}`
     );
-
+    const connection = 'asdasd' as any;
+    await acknowledgeMessage(connection);
     this.messageService.produce<ILogisticDelivery>(
+      connection,
       LogisticEvent.DELIVERY_INITIATED,
       delivery
     );

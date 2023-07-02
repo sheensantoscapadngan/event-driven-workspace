@@ -1,9 +1,11 @@
+import { DatabaseService } from '@event-driven-workspace/database';
 import { MessageService, PaymentEvent } from '@event-driven-workspace/message';
 import express, { Request, Response } from 'express';
 
 const startServer = async () => {
   const app = express();
-  const messageService = new MessageService();
+  const dbService = new DatabaseService({});
+  const messageService = new MessageService(dbService);
 
   app.post('/payment', async (req: Request, res: Response) => {
     try {

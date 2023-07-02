@@ -11,14 +11,17 @@ export const startPaymentEventListeners = (
 
   messageService.register<IPaymentOrder>(
     MessageSubscription.PAYMENT_ORDER_CREATED,
-    (data) => {
-      return logisticService.process({
-        item: data.productName,
-        itemQuantity: data.productQuantity,
-        receiverAddress: data.fullAddress,
-        receiverEmail: data.userEmail,
-        receiverName: data.userName,
-      });
+    (data, acknowledgeMessage) => {
+      return logisticService.process(
+        {
+          item: data.productName,
+          itemQuantity: data.productQuantity,
+          receiverAddress: data.fullAddress,
+          receiverEmail: data.userEmail,
+          receiverName: data.userName,
+        },
+        acknowledgeMessage
+      );
     }
   );
 };

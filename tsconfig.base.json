@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@event-driven-workspace/database": ["libs/database/src/index.ts"],
       "@event-driven-workspace/logistic": ["libs/logistic/src/index.ts"],
       "@event-driven-workspace/message": ["libs/message/src/index.ts"],
       "@event-driven-workspace/payment": ["libs/payment/src/index.ts"]
