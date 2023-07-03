@@ -7,8 +7,8 @@ import { v4 } from 'uuid';
 import {
   EventInboxStoredProcedure,
   EventOutboxStoredProcedure,
-} from '../enums';
-import { IAcknowledgeMessage, SystemEvent } from '../types';
+} from '../../enums';
+import { IAcknowledgeMessage, SystemEvent } from '../../types';
 
 export class MessageService {
   private pubSubClient: PubSub;
@@ -57,7 +57,7 @@ export class MessageService {
           const data = JSON.parse(message.data.toString()) as T;
           await eventHandler(data, async (connection) => {
             await this.markAsHandled(connection, message.id);
-            await message.ackWithResponse();
+            await message.ack();
             console.info(`Message with ID ${message.id} acknowledged.`);
           });
         } catch (err) {
