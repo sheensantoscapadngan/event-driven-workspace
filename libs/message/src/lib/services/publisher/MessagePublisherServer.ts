@@ -1,5 +1,3 @@
-import { DatabaseService } from '@event-driven-workspace/database';
-import { PubSub } from '@google-cloud/pubsub';
 import express from 'express';
 import { MessagePublisherService } from './MessagePublisherService';
 
@@ -24,11 +22,8 @@ export class MessagePublisherServer {
     });
   }
 
-  constructor(dbService: DatabaseService, pubSub: PubSub) {
-    this.messagePublisherService = new MessagePublisherService(
-      dbService,
-      pubSub
-    );
+  constructor(messagePublisherService: MessagePublisherService) {
+    this.messagePublisherService = messagePublisherService;
 
     this.initializeServer();
   }
