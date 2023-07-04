@@ -3,5 +3,5 @@ export enum LogisticEvent {
 }
 
 export enum PaymentEvent {
-  ORDER_CREATED = 'payment.order_created',
+  PAYMENT_PROCESSED = 'PAYMENT_PROCESSED',
 }

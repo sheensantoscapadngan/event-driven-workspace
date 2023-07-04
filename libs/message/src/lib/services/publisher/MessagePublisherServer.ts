@@ -29,8 +29,8 @@ export class MessagePublisherServer {
   }
 
   public start() {
-    this.app.listen(4000, () => {
-      console.log(`Listening on port ${4000}`);
+    this.app.listen(5000, () => {
+      console.log(`Listening on port ${5000}`);
     });
   }
 }

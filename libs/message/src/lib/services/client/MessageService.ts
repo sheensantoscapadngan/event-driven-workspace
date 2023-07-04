@@ -55,8 +55,9 @@ export class MessageService {
         try {
           event = await this.markForProcessing(message.id);
           const data = JSON.parse(message.data.toString()) as T;
-          await eventHandler(data, async (connection) => {
+          await eventHandler(data, async (connection: PoolConnection) => {
             await this.markAsHandled(connection, message.id);
+            console.info(`Message with ID ${message.id} is marked as handled.`);
             await message.ack();
             console.info(`Message with ID ${message.id} acknowledged.`);
           });
