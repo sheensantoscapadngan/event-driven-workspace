@@ -21,6 +21,7 @@ export class MessagePublisherService {
   }
 
   private markEventAsPublished(connection: PoolConnection, messageId: string) {
+    console.log(`Published event with message ID: ${messageId}`);
     return this.dbService.transactionalQuery(
       connection,
       EventOutboxStoredProcedure.markAsPublished,
@@ -41,6 +42,12 @@ export class MessagePublisherService {
   public poll() {
     return this.dbService.transaction(async (connection: PoolConnection) => {
       const unpublishedEvents = await this.getUnpublishedEvents(connection);
+      if (!unpublishedEvents.length) {
+        return;
+      }
+
+      console.log(`Fetched ${unpublishedEvents.length} events`);
+
       const promises = unpublishedEvents.map(async (event) => {
         await this.pubSub
           .topic(event.eventName)

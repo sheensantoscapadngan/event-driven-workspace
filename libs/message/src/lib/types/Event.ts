@@ -1,3 +1,3 @@
-import { LogisticEvent, PaymentEvent } from '../enums/Event';
+import { LogisticEvent, OrderEvent, PaymentEvent } from '../enums/Event';
 
-export type SystemEvent = LogisticEvent | PaymentEvent;
+export type SystemEvent = LogisticEvent | PaymentEvent | OrderEvent;

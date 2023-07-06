@@ -1,12 +1,37 @@
 import { DatabaseService } from '@event-driven-workspace/database';
-import { MessageService, PaymentEvent } from '@event-driven-workspace/message';
+import {
+  MessagePublisherService,
+  MessageService,
+  PaymentEvent,
+} from '@event-driven-workspace/message';
+import { PubSub } from '@google-cloud/pubsub';
 import express, { Request, Response } from 'express';
 import { PoolConnection } from 'mysql2';
 
 const startServer = async () => {
   const app = express();
-  const dbService = new DatabaseService({});
+
+  const dbService = new DatabaseService({
+    host: 'winhost',
+    user: 'root-dev',
+    password: 'Sh33#Santos',
+    database: 'payment_db',
+    dateStrings: true,
+    connectionLimit: 100,
+  });
+
   const messageService = new MessageService(dbService);
+
+  // Ideally kay this should be in another service/deployment...
+  const messagePublisherService = new MessagePublisherService(
+    dbService,
+    new PubSub()
+  );
+
+  setInterval(() => {
+    messagePublisherService.poll();
+  }, 1000);
+  console.log('CONFIGURED MESSAGE PUBLISHER SERVICE...');
 
   app.post('/payment', async (req: Request, res: Response) => {
     try {
@@ -34,8 +59,20 @@ const startServer = async () => {
     }
   });
 
-  app.listen(3000, () => {
-    console.log('Listening on port 3000');
+  app.post('/push', async (req: Request, res: Response) => {
+    try {
+      console.log('REQ IS', req);
+      res.statusCode = 200;
+      return res.send('Payment Success');
+    } catch (err) {
+      console.error('Request failed with', err);
+      res.statusCode = 500;
+      return res.json(err);
+    }
+  });
+
+  app.listen(4001, () => {
+    console.log('Listening on port 4001');
   });
 };
 

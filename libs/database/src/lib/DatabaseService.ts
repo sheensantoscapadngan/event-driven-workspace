@@ -1,64 +1,60 @@
 import { createPool, escape, Pool, PoolConnection, PoolOptions } from 'mysql2';
-import { promisify } from 'util';
 
 export class DatabaseService {
   private pool: Pool;
-  private promisifiedGetConnection: () => Promise<PoolConnection>;
 
   constructor(config: PoolOptions) {
     this.pool = createPool(config);
-    this.promisifiedGetConnection = promisify(this.pool.getConnection);
+  }
+
+  private getConnection(): Promise<PoolConnection> {
+    return new Promise((resolve, reject) => {
+      this.pool.getConnection((err, connection) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(connection);
+      });
+    });
   }
 
   private generateQueryString(storedProc: string, args: any[]) {
-    return `CALL ${escape(storedProc)}(${args.map(escape).join()})`;
+    return `CALL ${storedProc}(${args.map(escape).join()})`;
   }
 
-  public transactionalQuery(
+  public async transactionalQuery(
     connection: PoolConnection,
     storedProc: string,
     args: any[]
   ): Promise<any[]> {
-    return new Promise((resolve, reject) => {
-      const queryString = this.generateQueryString(storedProc, args);
-
-      connection.query(queryString, (err, data) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(data[0]);
-      });
-    });
+    const queryString = this.generateQueryString(storedProc, args);
+    const result = await connection.promise().query(queryString);
+    return result[0][0] as any[];
   }
 
   public async transaction<T = any>(
     process: (connection: PoolConnection) => Promise<T>
   ) {
-    const connection = await this.promisifiedGetConnection();
+    const connection = await this.getConnection();
     try {
+      await connection.promise().beginTransaction();
       const result = await process(connection);
-      connection.commit();
+      await connection.promise().commit();
+
       return result;
     } catch (err) {
       console.error(err);
-      connection.rollback(() => {
-        console.error('rolled back changes...');
-      });
+      await connection.promise().rollback();
+      console.error('rolled back changes...');
+      throw err;
     } finally {
       connection.release();
     }
   }
 
   public query(storedProc: string, args: any[]) {
-    return new Promise((resolve, reject) => {
-      const queryString = this.generateQueryString(storedProc, args);
-
-      this.pool.query(queryString, (err, data) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(data[0]);
-      });
-    });
+    const queryString = this.generateQueryString(storedProc, args);
+    const result = this.pool.promise().query(queryString);
+    return result[0][0];
   }
 }
