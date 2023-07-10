@@ -19,29 +19,63 @@ export class MessageService {
     this.dbService = dbService;
   }
 
-  private async markForProcessing(messageId: string) {
-    // messageID should be unique to prevent double-processing
+  private async markForProcessing(messageUUID: string) {
+    // messageUUID should be unique to prevent double-processing
     return this.dbService.query(
       EventInboxStoredProcedure.markMessageForProcess,
-      [messageId]
+      [messageUUID]
     );
   }
 
-  private async markAsHandled(connection: PoolConnection, messageId: string) {
+  private async markAsHandled(connection: PoolConnection, messageUUID: string) {
     return this.dbService.transactionalQuery(
       connection,
       EventInboxStoredProcedure.acknowledgeMessage,
-      [messageId]
+      [messageUUID]
     );
   }
 
-  private removeFromInbox(messageId: string) {
+  private removeFromInbox(messageUUID: string) {
     return this.dbService.query(EventInboxStoredProcedure.removeMessage, [
-      messageId,
+      messageUUID,
     ]);
   }
 
-  public register<T = any>(
+  public async processPushedEvent<T = any>(
+    event,
+    eventHandler: (
+      eventMessage: T,
+      acknowledgeMessage: IAcknowledgeMessage
+    ) => void
+  ) {
+    let process;
+    const messageUUID = event.message.attributes.messageUUID;
+    if (!messageUUID) {
+      throw new Error('Missing required attribute: messageUUID.');
+    }
+    console.info(`Received message with UUID ${messageUUID}`);
+
+    try {
+      process = await this.markForProcessing(messageUUID);
+      const data = JSON.parse(
+        Buffer.from(event.message.data, 'base64').toString()
+      ) as T;
+      await eventHandler(data, async (connection: PoolConnection) => {
+        await this.markAsHandled(connection, messageUUID);
+        console.info(`Message with UUID ${messageUUID} is marked as handled.`);
+        console.info(`Message with UUID ${messageUUID} acknowledged.`);
+      });
+    } catch (err) {
+      console.error(err);
+      if (process) {
+        await this.removeFromInbox(messageUUID);
+        console.info(`Removed message with UUID ${messageUUID}`);
+      }
+      throw err;
+    }
+  }
+
+  public registerPullSubscription<T = any>(
     subscriptionName: string,
     eventHandler: (
       eventMessage: T,
@@ -52,20 +86,21 @@ export class MessageService {
       .subscription(subscriptionName)
       .on('message', async (message: Message) => {
         let event;
+        const messageUUID = message.attributes.messageUUID;
+
         try {
-          event = await this.markForProcessing(message.id);
+          event = await this.markForProcessing(messageUUID);
           const data = JSON.parse(message.data.toString()) as T;
           await eventHandler(data, async (connection: PoolConnection) => {
-            await this.markAsHandled(connection, message.id);
-            console.info(`Message with ID ${message.id} is marked as handled.`);
+            await this.markAsHandled(connection, messageUUID);
             await message.ack();
-            console.info(`Message with ID ${message.id} acknowledged.`);
+            console.info(`Message with UUID ${messageUUID} acknowledged.`);
           });
         } catch (err) {
           console.error(err);
           if (event) {
-            await this.removeFromInbox(message.id);
-            console.info(`Removed message with ID ${message.id}`);
+            await this.removeFromInbox(messageUUID);
+            console.info(`Removed message with UUID ${messageUUID}`);
           }
           message.nack();
         }
@@ -80,11 +115,11 @@ export class MessageService {
     eventName: SystemEvent,
     eventMessage: T
   ) {
-    const messageId = v4();
+    const messageUUID = v4();
     return this.dbService.transactionalQuery(
       connection,
       EventOutboxStoredProcedure.publishMessage,
-      [messageId, eventName, JSON.stringify(eventMessage)]
+      [messageUUID, eventName, JSON.stringify(eventMessage)]
     );
   }
 }

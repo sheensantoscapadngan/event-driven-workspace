@@ -52,9 +52,9 @@ export class DatabaseService {
     }
   }
 
-  public query(storedProc: string, args: any[]) {
+  public async query(storedProc: string, args: any[]) {
     const queryString = this.generateQueryString(storedProc, args);
-    const result = this.pool.promise().query(queryString);
+    const result = await this.pool.promise().query(queryString);
     return result[0][0];
   }
 }

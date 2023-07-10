@@ -33,6 +33,8 @@ const startServer = async () => {
   }, 1000);
   console.log('CONFIGURED MESSAGE PUBLISHER SERVICE...');
 
+  app.use(express.json());
+
   app.post('/payment', async (req: Request, res: Response) => {
     try {
       const paymentData = {
@@ -61,7 +63,26 @@ const startServer = async () => {
 
   app.post('/push', async (req: Request, res: Response) => {
     try {
-      console.log('REQ IS', req);
+      if (
+        req.body.subscription ===
+        'projects/meme-364412/subscriptions/payment-order.order_created'
+      ) {
+        await messageService.processPushedEvent<any>(req.body, (data, ack) => {
+          return dbService.transaction(async (connection: PoolConnection) => {
+            // CALL API HERE OR SOMETHING IDK
+            await messageService.produce(
+              connection,
+              PaymentEvent.PAYMENT_PROCESSED,
+              {
+                orderId: data.orderId,
+                status: 'SUCCESS',
+              }
+            );
+            await ack(connection);
+          });
+        });
+      }
+
       res.statusCode = 200;
       return res.send('Payment Success');
     } catch (err) {

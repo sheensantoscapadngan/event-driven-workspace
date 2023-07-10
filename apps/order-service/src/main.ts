@@ -10,6 +10,9 @@ import { PoolConnection } from 'mysql2';
 
 const startServer = async () => {
   const app = express();
+
+  app.use(express.json());
+
   const dbService = new DatabaseService({
     host: 'winhost',
     user: 'root-dev',
@@ -75,6 +78,34 @@ const startServer = async () => {
         res.send(`DONE with orderId: ${orderId}`);
       });
     } catch (err) {
+      res.statusCode = 500;
+      return res.json(err);
+    }
+  });
+
+  app.post('/push', async (req, res) => {
+    try {
+      if (
+        req.body.subscription ===
+        'projects/meme-364412/subscriptions/order-payment.payment_processed'
+      ) {
+        await messageService.processPushedEvent<any>(req.body, (data, ack) => {
+          return dbService.transaction(async (connection: PoolConnection) => {
+            // mark order as PAID
+            await dbService.transactionalQuery(
+              connection,
+              'order_entry_markAsPaid',
+              [data.orderId]
+            );
+            await ack(connection);
+          });
+        });
+      }
+
+      res.statusCode = 200;
+      return res.send('Payment Success');
+    } catch (err) {
+      console.error('Request failed with', err);
       res.statusCode = 500;
       return res.json(err);
     }

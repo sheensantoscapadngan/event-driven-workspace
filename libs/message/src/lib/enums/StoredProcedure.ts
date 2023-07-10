@@ -7,6 +7,5 @@ export enum EventOutboxStoredProcedure {
 export enum EventInboxStoredProcedure {
   markMessageForProcess = 'event_inbox_markForProcessing',
   acknowledgeMessage = 'event_inbox_acknowledge',
-  getByMessageId = 'event_inbox_getByMessageId',
-  removeMessage = 'event_inbox_removeByMessageId',
+  removeMessage = 'event_inbox_removeByMessageUUID',
 }

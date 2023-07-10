@@ -15,17 +15,20 @@ export class MessagePublisherService {
   private castToEventOutbox(data: any) {
     return {
       eventName: data.event_name,
-      messageId: data.message_id,
+      messageUUID: data.message_uuid,
       eventMessage: JSON.parse(data.event_message),
     };
   }
 
-  private markEventAsPublished(connection: PoolConnection, messageId: string) {
-    console.log(`Published event with message ID: ${messageId}`);
+  private markEventAsPublished(
+    connection: PoolConnection,
+    messageUUID: string
+  ) {
+    console.log(`Published event with message UUID: ${messageUUID}`);
     return this.dbService.transactionalQuery(
       connection,
       EventOutboxStoredProcedure.markAsPublished,
-      [messageId]
+      [messageUUID]
     );
   }
 
@@ -49,11 +52,14 @@ export class MessagePublisherService {
       console.log(`Fetched ${unpublishedEvents.length} events`);
 
       const promises = unpublishedEvents.map(async (event) => {
-        await this.pubSub
-          .topic(event.eventName)
-          .publishMessage({ json: event.eventMessage });
+        await this.pubSub.topic(event.eventName).publishMessage({
+          json: event.eventMessage,
+          attributes: {
+            messageUUID: event.messageUUID,
+          },
+        });
 
-        await this.markEventAsPublished(connection, event.messageId);
+        await this.markEventAsPublished(connection, event.messageUUID);
       });
 
       return Promise.all(promises);
